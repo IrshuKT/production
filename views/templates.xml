@@ -1,0 +1,7 @@
+<odoo>
+    <template id="stage_form_js" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <script type="text/javascript" src="/stage/static/src/js/stage_form.js"></script>
+        </xpath>
+    </template>
+</odoo>

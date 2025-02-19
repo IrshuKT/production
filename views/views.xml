@@ -1,0 +1,112 @@
+<odoo>
+    <data>
+        <!-- explicit list view definition -->
+
+        <record model="ir.ui.view" id="production_stage_list">
+            <field name="name">Production Stage List</field>
+            <field name="model">stage.main</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="voucher_no"/>
+                    <field name="remarks"/>
+                </tree>
+            </field>
+        </record>
+        <record model="ir.ui.view" id="production_stage_form">
+            <field name="name">Production Stage Form</field>
+            <field name="model">stage.main</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="stage_status" widget="statusbar" statusbar_visible="stage_1,stage_2"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="voucher_no"/>
+                            <field name="remarks"/>
+                        </group>
+
+                        <notebook attrs="{'onchange': [('stage_status', '=', 'stage_1'), ('stage_status', '=', 'stage_2')]}">
+                            <!--                            STAGE 1-->
+                            <page string="Stage 1" name="stage_1">
+                                <field string="Product" name="product_one_id" attrs="{'readonly': [('product_one_id', '=', False)]}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                                <field string="Component" name="component_one_id" attrs="{'readonly': [('component_one_id', '!=', False)]}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+
+                                <field string="By Product" name="byproduct_one_id"  attrs="{'readonly': [('product_one_id', '!=', False)]}">
+                                   <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <!--                            STAGE 2-->
+                            <page string="Stage 2" name="stage_2">
+                                <field name="product_two_id" >
+                                    <tree editable="True">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                                <field name="component_two_id" attrs="{'readonly': [('product_two_id', '!=', False)]}">
+                                    <tree >
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+
+                                <field name="byproduct_two_id" attrs="{'readonly': [('product_two_id', '!=', False)]}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+
+        <!-- actions opening views on models -->
+
+        <record model="ir.actions.act_window" id="stage.action_window">
+            <field name="name">stage window</field>
+            <field name="res_model">stage.main</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="production_stage_list"/>
+        </record>
+
+
+        <!-- Top menu item -->
+
+        <menuitem name="Stage" id="stage.menu_root"/>
+
+        <menuitem name="Product" id="stage.menu_1_list" parent="stage.menu_root"
+                  action="stage.action_window"/>
+
+
+    </data>
+</odoo>
