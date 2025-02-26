@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <template id="stage_report">
+        <t t-call="web.html_container">
+            <style>
+                .page {
+                    width: 100%;
+                    margin-top: 0px;
+                    padding-top: 0px;
+                    font-size: 10px;
+                }
+                .heading-text {
+                    z-index: 20;
+                    position: relative;
+                    text-align: center;
+                    font-size: 24px;
+                }
+                .report-title {
+                    text-align: left;
+                    font-size: 14px;
+                }
+                .table {
+                    width: 100%;
+                    border: 1px solid black;
+                    border-collapse: collapse;
+                }
+                .table th, .table td {
+                    border: 1px solid black;
+                    padding: 8px;
+                }
+                .heading{
+                    font-size:12px;
+                    text-align:left;
+                }
+            </style>
+            <t t-foreach="doc_ids" t-as="doc">
+                <div class="page" style="width: 100%; margin-top: 5px; padding: 0; font-size: 10px;">
+                    <h2 class="heading-text">Production Stage Report</h2>
+                    <p>
+                         <span style="display: inline-block; margin-right: 20px; width:48%;">
+                        <strong>Voucher NO: <span t-esc="docs.voucher_no"/></strong>
+                         </span>
+                         <span style="display: inline-block;width:48%;">
+                        <strong>Remarks: <span t-esc="docs.remarks"/></strong>
+
+                         </span>
+                    </p>
+
+                    <!-- Loop through preprocessed stage data -->
+                    <t t-foreach="docs.get_stage_data()" t-as="stage">
+                        <h3><t t-esc="stage['stage_name']"/></h3>
+                        <table class="table">
+                            <thead>
+                                <tr class="heading">
+                                    <th>PRODUCED</th>
+                                    <th>Lot</th>
+                                    <th>Qty</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="stage['products']" t-as="product">
+                                    <td t-esc="product.product_id.name or ''"/>
+                                    <td t-esc="product.product_lot or ''"/>
+                                    <td t-esc="product.product_qty or ''"/>
+                                    <td t-esc="product.product_type or ''"/>
+                                </tr>
+                            </tbody>
+                            <thead>
+                                <tr class="heading">
+                                    <th >COMPONENTS</th>
+                                    <th >Lot</th>
+                                    <th >Qty</th>
+                                    <th >Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="stage['components']" t-as="component">
+                                    <td t-esc="component.product_id.name or ''"/>
+                                    <td t-esc="component.product_lot or ''"/>
+                                    <td t-esc="component.product_qty or ''"/>
+                                    <td t-esc="component.product_type or ''"/>
+                                </tr>
+                            </tbody>
+                            <thead>
+                                <tr class="heading">
+                                    <th >BY-PRODUCT</th>
+                                    <th >Lot</th>
+                                    <th >Qty</th>
+                                    <th >Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="stage['byproducts']" t-as="byproduct">
+                                    <td t-esc="byproduct.product_id.name or ''"/>
+                                    <td t-esc="byproduct.product_lot or ''"/>
+                                    <td t-esc="byproduct.product_qty or ''"/>
+                                    <td t-esc="byproduct.product_type or ''"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

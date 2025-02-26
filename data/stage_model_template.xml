@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record model="ir.actions.report" id="stage_report_action">
+        <field name="name">Stage Report</field>
+        <field name="model">stage.main</field> <!-- Ensure this matches the model name -->
+        <field name="report_name">stage.stage_report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="binding_model_id" ref="model_stage_main"/>
+        <field name="binding_type">report</field>
+
+    </record>
+</odoo>

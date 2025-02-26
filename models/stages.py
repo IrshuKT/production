@@ -9,7 +9,7 @@ class StageOneProduct(models.Model):
     product_lot = fields.Char('LOT')
     product_qty = fields.Float('QTY')
     product_type = fields.Char('TYPE')
-    stage_one_product_id = fields.Many2one('stage.main', ondelete='cascade', string='Product')
+    stage_one_product_id = fields.Many2one('stage.main', ondelete='cascade')
 
 
 class StageOneComponent(models.Model):
@@ -20,7 +20,7 @@ class StageOneComponent(models.Model):
     product_lot = fields.Char('LOT')
     product_qty = fields.Float('QTY')
     product_type = fields.Float('Nos')
-    stage_one_component_id = fields.Many2one('stage.main', ondelete='cascade', string='Component')
+    stage_one_component_id = fields.Many2one('stage.main', ondelete='cascade')
 
 
 class StageOneByProduct(models.Model):
@@ -31,7 +31,7 @@ class StageOneByProduct(models.Model):
     product_lot = fields.Char('LOT')
     product_qty = fields.Float('QTY')
     product_type = fields.Float('TYPE')
-    stage_one_byproduct_id = fields.Many2one('stage.main', ondelete='cascade', string='By Product')
+    stage_one_byproduct_id = fields.Many2one('stage.main', ondelete='cascade')
 
 
 class StageTwoProduct(models.Model):

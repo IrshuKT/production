@@ -18,18 +18,35 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                        <field name="stage_status" widget="statusbar" statusbar_visible="stage_1,stage_2"/>
+                        <button name="action_print_report" string="Print PDF Report" type="object" class="btn-primary"/>
+                        <button name="generate_excel_report" string="Export Excel Report" type="object" class="btn-success"/>
+
+                        <field name="stage_status" widget="statusbar"
+                               statusbar_visible="stage_1,stage_2,stage_3,stage_4,stage_5,stage_6"/>
+
+
                     </header>
-                    <sheet>
+                    <sheet attrs="{'readonly': [('stage_readonly', '=', True)]}">
                         <group>
                             <field name="voucher_no"/>
                             <field name="remarks"/>
                         </group>
-
-                        <notebook attrs="{'onchange': [('stage_status', '=', 'stage_1'), ('stage_status', '=', 'stage_2')]}">
+                        <field name="stage_readonly" invisible="1"/>
+                        <field name="stage_1_readonly" invisible="1"/>
+                        <field name="stage_2_readonly" invisible="1"/>
+                        <field name="stage_3_readonly" invisible="1"/>
+                        <field name="stage_4_readonly" invisible="1"/>
+                        <field name="stage_5_readonly" invisible="1"/>
+                        <field name="stage_6_readonly" invisible="1"/>
+                        <notebook>
                             <!--                            STAGE 1-->
-                            <page string="Stage 1" name="stage_1">
-                                <field string="Product" name="product_one_id" attrs="{'readonly': [('product_one_id', '=', False)]}">
+                            <page string="STAGE 1-COCONUT BREAKING" name="stage_1"
+                                  attrs="{'readonly': [('stage_1_readonly', '=', True)]}">
+                                <button name="produce" string="Produce Product" type="object" class="btn-primary"/>
+                                <button name="confirm_stage" string="Confirm Stage" type="object" class="oe_highlight"
+                                style="margin-left:10px;"/>
+
+                                <field name="product_one_id" attrs="{'readonly': [('stage_status', '!=', 'stage_1')]}">
                                     <tree editable="bottom">
                                         <field name="product_id"/>
                                         <field name="product_lot"/>
@@ -37,7 +54,8 @@
                                         <field name="product_type"/>
                                     </tree>
                                 </field>
-                                <field string="Component" name="component_one_id" attrs="{'readonly': [('component_one_id', '!=', False)]}">
+                                <field name="component_one_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_1')]}">
                                     <tree editable="bottom">
                                         <field name="product_id"/>
                                         <field name="product_lot"/>
@@ -46,8 +64,9 @@
                                     </tree>
                                 </field>
 
-                                <field string="By Product" name="byproduct_one_id"  attrs="{'readonly': [('product_one_id', '!=', False)]}">
-                                   <tree editable="bottom">
+                                <field name="byproduct_one_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_1')]}">
+                                    <tree editable="bottom">
                                         <field name="product_id"/>
                                         <field name="product_lot"/>
                                         <field name="product_qty"/>
@@ -56,8 +75,13 @@
                                 </field>
                             </page>
                             <!--                            STAGE 2-->
-                            <page string="Stage 2" name="stage_2">
-                                <field name="product_two_id" >
+                            <page string="STAGE 2-DRYER" name="stage_2"
+                                  attrs="{'readonly': [('stage_2_readonly', '=', True)]}">
+                                <button name="produce" string="Produce Product" type="object" class="btn-primary"/>
+                                <button name="confirm_stage" string="Confirm Stage" type="object" class="oe_highlight"
+                                style="margin-left:10px;"/>
+
+                                <field name="product_two_id" attrs="{'readonly': [('stage_status', '!=', 'stage_2')]}">
                                     <tree editable="True">
                                         <field name="product_id"/>
                                         <field name="product_lot"/>
@@ -65,8 +89,9 @@
                                         <field name="product_type"/>
                                     </tree>
                                 </field>
-                                <field name="component_two_id" attrs="{'readonly': [('product_two_id', '!=', False)]}">
-                                    <tree >
+                                <field name="component_two_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_2')]}">
+                                    <tree>
                                         <field name="product_id"/>
                                         <field name="product_lot"/>
                                         <field name="product_qty"/>
@@ -74,7 +99,137 @@
                                     </tree>
                                 </field>
 
-                                <field name="byproduct_two_id" attrs="{'readonly': [('product_two_id', '!=', False)]}">
+                                <field name="byproduct_two_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_2')]}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <!--                            STAGE 3-->
+                            <page string="STAGE 3-SHELL BREAKING" name="stage_3"
+                                  attrs="{'readonly': [('stage_3_readonly', '=', True)]}">
+                                <button name="produce" string="Produce Product" type="object" class="btn-primary"/>
+                                <field name="product_three_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_3')]}">
+                                    <tree editable="True">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                                <field name="component_three_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_3')]}">
+                                    <tree>
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+
+                                <field name="byproduct_three_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_3')]}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <!--                            STAGE 4-->
+                            <page string="STAGE 4-OIL PROCESSING FIRST LEVEL" name="stage_4"
+                                  attrs="{'readonly': [('stage_4_readonly', '=', True)]}">
+                                <button name="produce" string="Produce Product" type="object" class="btn-primary"/>
+                                <field name="product_four_id" attrs="{'readonly': [('stage_status', '!=', 'stage_4')]}">
+                                    <tree editable="True">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                                <field name="component_four_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_4')]}">
+                                    <tree>
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+
+                                <field name="byproduct_four_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_4')]}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <!--                            STAGE 5-->
+                                <page string="STAGE 5-OIL PROCESSING SECOND LEVEL" name="stage_5"
+                                  attrs="{'readonly': [('stage_5_readonly', '=', True)]}">
+                                <button name="produce" string="Produce Product" type="object" class="btn-primary"/>
+                                <field name="product_five_id" attrs="{'readonly': [('stage_status', '!=', 'stage_5')]}">
+                                    <tree editable="True">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                                <field name="component_five_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_5')]}">
+                                    <tree>
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+
+                                <field name="byproduct_five_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_5')]}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <!--                            STAGE 6-->
+                            <page string="STAGE 6-PACKING" name="stage_6"
+                                  attrs="{'readonly': [('stage_6_readonly', '=', True)]}">
+                                <button name="produce" string="Produce Product" type="object" class="btn-primary"/>
+                                <field name="product_six_id" attrs="{'readonly': [('stage_status', '!=', 'stage_6')]}">
+                                    <tree editable="True">
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+                                <field name="component_six_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_6')]}">
+                                    <tree>
+                                        <field name="product_id"/>
+                                        <field name="product_lot"/>
+                                        <field name="product_qty"/>
+                                        <field name="product_type"/>
+                                    </tree>
+                                </field>
+
+                                <field name="byproduct_six_id"
+                                       attrs="{'readonly': [('stage_status', '!=', 'stage_6')]}">
                                     <tree editable="bottom">
                                         <field name="product_id"/>
                                         <field name="product_lot"/>
@@ -85,6 +240,7 @@
                             </page>
                         </notebook>
                     </sheet>
+
                 </form>
             </field>
         </record>
@@ -101,12 +257,10 @@
 
 
         <!-- Top menu item -->
-
         <menuitem name="Stage" id="stage.menu_root"/>
 
         <menuitem name="Product" id="stage.menu_1_list" parent="stage.menu_root"
                   action="stage.action_window"/>
-
 
     </data>
 </odoo>

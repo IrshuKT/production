@@ -26,16 +26,14 @@
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        'data/stage_model_template.xml',
+        'report/stage_print_pdf.xml',
         'views/views.xml',
-        #'views/templates.xml',
+        'views/templates.xml',
     ],
-    # 'assets': {
-    #     'web.assets_backend': [
-    #         '/stage/static/src/js/stage_form.js',
-    #     ],
-    # },
     # only loaded in demonstration mode
     'demo': [
         'demo/demo.xml',
     ],
+
 }

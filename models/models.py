@@ -1,6 +1,13 @@
-from odoo import models, fields, api, exceptions
+from odoo import models, fields, api, _, exceptions
 from odoo.exceptions import UserError, ValidationError
 import logging
+import xml.etree.ElementTree as ET
+import io
+import base64
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+from lxml import etree
+
 _logger = logging.getLogger(__name__)
 
 
@@ -11,7 +18,8 @@ class StageMain(models.Model):
     voucher_no = fields.Char('Voucher Number')
     remarks = fields.Text('Remarks')
     stage_status = fields.Selection([
-        ('stage_1', 'STAGE 1'), ('stage_2', 'STAGE 2')
+        ('stage_1', 'STAGE 1'), ('stage_2', 'STAGE 2'), ('stage_3', 'STAGE 3'), ('stage_4', 'STAGE 4'),
+        ('stage_5', 'STAGE 5'), ('stage_6', 'STAGE 6')
     ], default='stage_1', string='Stage Status')
 
     product_one_id = fields.One2many('stage.one.product', 'stage_one_product_id', ondelete='cascade')
@@ -30,37 +38,121 @@ class StageMain(models.Model):
     component_four_id = fields.One2many('stage.four.component', 'stage_four_component_id', ondelete='cascade')
     byproduct_four_id = fields.One2many('stage.four.byproduct', 'stage_four_byproduct_id', ondelete='cascade')
 
+    product_five_id = fields.One2many('stage.five.product', 'stage_five_product_id', ondelete='cascade')
+    component_five_id = fields.One2many('stage.five.component', 'stage_five_component_id', ondelete='cascade')
+    byproduct_five_id = fields.One2many('stage.five.byproduct', 'stage_five_byproduct_id', ondelete='cascade')
+
+    product_six_id = fields.One2many('stage.six.product', 'stage_six_product_id', ondelete='cascade')
+    component_six_id = fields.One2many('stage.six.component', 'stage_six_component_id', ondelete='cascade')
+    byproduct_six_id = fields.One2many('stage.six.byproduct', 'stage_six_byproduct_id', ondelete='cascade')
+
+    stage_readonly = fields.Boolean(compute="_compute_stage_readonly", store=True)
+    # stage_button_invisible = fields.Boolean(compute="_compute_stage_button_invisible")
+    stage_1_readonly = fields.Boolean(string='Stage 1 Readonly', default=False)
+    stage_2_readonly = fields.Boolean(string='Stage 2 Readonly', default=False)
+    stage_3_readonly = fields.Boolean(string='Stage 3 Readonly', default=False)
+    stage_4_readonly = fields.Boolean(string='Stage 4 Readonly', default=False)
+    stage_5_readonly = fields.Boolean(string='Stage 5 Readonly', default=False)
+    stage_6_readonly = fields.Boolean(string='Stage 6 Readonly', default=False)
+
+    #Pdf print action
+
+    def action_print_report(self):
+        return self.env.ref('stage.stage_report_action').report_action(self)
+
+    def get_stage_data(self):
+        """Prepare stage data for the report."""
+        self.ensure_one()
+        stage_data = []
+
+        stage_number_to_word = {
+            1: 'one',
+            2: 'two',
+            3: 'three',
+            4: 'four',
+            5: 'five',
+            6: 'six',
+        }
+
+        form_view = self.env['ir.ui.view'].search([
+            ('model', '=', 'stage.main'),
+            ('type', '=', 'form'),
+        ], limit=1)
+
+        if form_view:
+            # Parse the form view arch to extract page strings
+            try:
+                arch = etree.fromstring(form_view.arch)
+                pages = arch.xpath("//page[@name]")
+
+                for page in pages:
+                    page_name = page.get('name')
+                    page_string = page.get('string', f'Stage {page_name.split("_")[1]}')  # Default fallback
+                    stage_number = int(page_name.split('_')[1])
+                    stage_word = stage_number_to_word.get(stage_number, str(stage_number))
+
+                    stage_info = {
+                        'stage_name': page_string,  # Use the page string as the stage name
+                        'products': self[f'product_{stage_word}_id'],
+                        'components': self[f'component_{stage_word}_id'],
+                        'byproducts': self[f'byproduct_{stage_word}_id'],
+                    }
+                    stage_data.append(stage_info)
+            except Exception as e:
+                _logger.error(f"Error parsing form view arch: {e}")
+                # Fallback to default stage names if parsing fails
+                for stage_number in range(1, 7):
+                    stage_word = stage_number_to_word.get(stage_number, str(stage_number))
+                    stage_info = {
+                        'stage_name': f'Stage {stage_number}',
+                        'products': self[f'product_{stage_word}_id'],
+                        'components': self[f'component_{stage_word}_id'],
+                        'byproducts': self[f'byproduct_{stage_word}_id'],
+                    }
+                    stage_data.append(stage_info)
+
+        return stage_data
+
+    
+
+    # Mark previous stages as read-only once moved forward.
+    @api.depends('stage_status')
+    def _compute_stage_readonly(self):
+        stage_order = ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5', 'stage_6']
+        for record in self:
+            record.stage_1_readonly = record.stage_status != 'stage_1'
+            record.stage_2_readonly = record.stage_status not in ['stage_1', 'stage_2']
+            record.stage_3_readonly = record.stage_status not in ['stage_1', 'stage_2', 'stage_3']
+            record.stage_4_readonly = record.stage_status not in ['stage_1', 'stage_2', 'stage_3', 'stage_4']
+            record.stage_5_readonly = record.stage_status not in ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5']
+            record.stage_6_readonly = record.stage_status == 'stage_6'
+
     @api.onchange('product_one_id')
     def _onchange_product_stage_1(self):
-        """Fetch BoM when selecting a product in Stage 1."""
         self._fetch_bom_data(self.product_one_id, 'stage_1')
 
     @api.onchange('product_two_id')
     def _onchange_product_stage_2(self):
-        """Fetch BoM when selecting a product in Stage 2."""
         self._fetch_bom_data(self.product_two_id, 'stage_2')
 
     @api.onchange('product_three_id')
     def _onchange_product_stage_3(self):
-        """Fetch BoM when selecting a product in Stage 3."""
         self._fetch_bom_data(self.product_three_id, 'stage_3')
 
-    @api.onchange('product_four_ids')
+    @api.onchange('product_four_id')
     def _onchange_product_stage_4(self):
-        """Fetch BoM when selecting a product in Stage 3."""
         self._fetch_bom_data(self.product_four_id, 'stage_4')
 
-    @api.onchange('product_five_ids')
+    @api.onchange('product_five_id')
     def _onchange_product_stage_5(self):
-        """Fetch BoM when selecting a product in Stage 3."""
         self._fetch_bom_data(self.product_five_id, 'stage_5')
 
-    @api.onchange('product_six_ids')
+    @api.onchange('product_six_id')
     def _onchange_product_stage_6(self):
-        """Fetch BoM when selecting a product in Stage 3."""
         self._fetch_bom_data(self.product_six_id, 'stage_6')
 
     def _fetch_bom_data(self, produced_ids, stage):
+        """Fetch BOM data and update components and by-products for the given stage."""
         self._clear_stage_data(stage)
 
         if not produced_ids:
@@ -81,164 +173,146 @@ class StageMain(models.Model):
 
             _logger.info(f"Updated {current_product.name} quantity to {product_qty_from_bom} from BOM.")
 
-        if not bom:
+            component_data = [(0, 0, {'product_id': line.product_id.id, 'product_qty': line.product_qty}) for line in
+                              bom.bom_line_ids]
+            by_product_data = [(0, 0, {'product_id': byproduct.product_id.id, 'product_qty': byproduct.product_qty}) for
+                               byproduct in bom.byproduct_ids]
+
+            # Assign to the correct stage
+            stage_map = {
+                'stage_1': ('component_one_id', 'byproduct_one_id'),
+                'stage_2': ('component_two_id', 'byproduct_two_id'),
+                'stage_3': ('component_three_id', 'byproduct_three_id'),
+                'stage_4': ('component_four_id', 'byproduct_four_id'),
+                'stage_5': ('component_five_id', 'byproduct_five_id'),
+                'stage_6': ('component_six_id', 'byproduct_six_id'),
+            }
+
+            if stage in stage_map:
+                component_field, byproduct_field = stage_map[stage]
+                # Write the updated data back to the database
+                self.write({
+                    component_field: component_data,
+                    byproduct_field: by_product_data,
+                })
+
+            _logger.info(f"Updated components and by-products for {stage}")
+        else:
             _logger.warning(f"No BOM found for {current_product.name}")
-            return
-
-        component_data = [(0, 0, {'product_id': line.product_id.id, 'product_qty': line.product_qty}) for line in bom.bom_line_ids]
-        by_product_data = [(0, 0, {'product_id': byproduct.product_id.id, 'product_qty': byproduct.product_qty}) for byproduct in
-                           bom.byproduct_ids]
-
-        # Assign to the correct stage
-        if stage == 'stage_1':
-            self.component_one_id = component_data
-            self.byproduct_one_id = by_product_data
-        elif stage == 'stage_2':
-            self.component_two_id = component_data
-            self.byproduct_two_id = by_product_data
-        elif stage == 'stage_3':
-            self.component_three_ids = component_data
-            self.byproduct_three_ids = by_product_data
-        elif stage == 'stage_4':
-            self.component_four_ids = component_data
-            self.byproduct_four_ids = by_product_data
-        elif stage == 'stage_5':
-            self.component_five_ids = component_data
-            self.byproduct_five_ids = by_product_data
-        elif stage == 'stage_6':
-            self.component_six_ids = component_data
-            self.byproduct_six_ids = by_product_data
-
-        _logger.info(f"Updated components and by-products for {stage}")
 
     def _clear_stage_data(self, stage):
-        """Clears previous data before updating new BoM details."""
-        if stage == 'stage_1':
-            self.component_ids = [(5, 0, 0)]
-            self.by_product_ids = [(5, 0, 0)]
-        elif stage == 'stage_2':
-            self.component_two_ids = [(5, 0, 0)]
-            self.by_product_two_ids = [(5, 0, 0)]
-        elif stage == 'stage_3':
-            self.component_three_ids = [(5, 0, 0)]
-            self.by_product_three_ids = [(5, 0, 0)]
-        elif stage == 'stage_4':
-            self.component_four_ids = [(5, 0, 0)]
-            self.by_product_four_ids = [(5, 0, 0)]
-        elif stage == 'stage_5':
-            self.component_five_ids = [(5, 0, 0)]
-            self.by_product_five_ids = [(5, 0, 0)]
-        elif stage == 'stage_6':
-            self.component_six_ids = [(5, 0, 0)]
-            self.by_product_six_ids = [(5, 0, 0)]
+        """Clears existing components and by-products for a given stage before updating with BOM data."""
+        stage_map = {
+            'stage_1': ('component_one_id', 'byproduct_one_id'),
+            'stage_2': ('component_two_id', 'byproduct_two_id'),
+            'stage_3': ('component_three_id', 'byproduct_three_id'),
+            'stage_4': ('component_four_id', 'byproduct_four_id'),
+            'stage_5': ('component_five_id', 'byproduct_five_id'),
+            'stage_6': ('component_six_id', 'byproduct_six_id'),
+        }
 
-    def create_bom(self):
-        """Create a BoM from the selected components, by-products, and working hours for the current stage."""
-        if not self.product_id:
-            raise UserError("Please select a product.")
+        if stage in stage_map:
+            component_field, byproduct_field = stage_map[stage]
+            self.write({
+                component_field: [(5, 0, 0)],  # Remove all existing records
+                byproduct_field: [(5, 0, 0)],
+            })
+            _logger.info(f"Cleared existing components and by-products for {stage}.")
 
-        # Determine the current stage components and by-products
-        if self.stage_status == 'stage_1':
-            components = self.component_ids
-            byproducts = self.by_product_ids
-        elif self.stage_status == 'stage_2':
-            components = self.component_two_ids
-            byproducts = self.by_product_two_ids
-        elif self.stage_status == 'stage_3':
-            components = self.component_three_ids
-            byproducts = self.by_product_three_ids
-        elif self.stage_status == 'stage_4':
-            components = self.component_four_ids
-            byproducts = self.by_product_four_ids
-        elif self.stage_status == 'stage_5':
-            components = self.component_five_ids
-            byproducts = self.by_product_five_ids
-        elif self.stage_status == 'stage_6':
-            components = self.component_six_ids
-            byproducts = self.by_product_six_ids
-        else:
-            raise UserError("Invalid stage status.")
 
-        if not components or not byproducts:
-            raise UserError("Please select components and by-products for the current stage.")
+    def produce(self):
+        self.ensure_one()
 
-        # Create BoM
-        bom = self.env['mrp.bom'].create({
-            'product_tmpl_id': self.product_id.product_tmpl_id.id,
-            'product_qty': self.qty,
-            'type': 'normal',
+        if self.stage_status == 'stage_6':
+            raise UserError("Production is complete! No further stages to process.")
+
+        stage_order = ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5', 'stage_6']
+        current_index = stage_order.index(self.stage_status)
+
+        if current_index < len(stage_order) - 1:
+            self.stage_status = stage_order[current_index + 1]
+
+        self._compute_stage_readonly()
+
+        self.env.cr.commit()
+
+    def confirm_stage(self):
+        self.ensure_one()
+
+        stage_map = {
+            'stage_1': (self.product_one_id, self.component_one_id, self.byproduct_one_id),
+            'stage_2': (self.product_two_id, self.component_two_id, self.byproduct_two_id),
+            'stage_3': (self.product_three_id, self.component_three_id, self.byproduct_three_id),
+            'stage_4': (self.product_four_id, self.component_four_id, self.byproduct_four_id),
+            'stage_5': (self.product_five_id, self.component_five_id, self.byproduct_five_id),
+            'stage_6': (self.product_six_id, self.component_six_id, self.byproduct_six_id),
+        }
+
+        products, components, byproducts = stage_map.get(self.stage_status, (False, False, False))
+
+        if not products or not components:
+            raise UserError("No products or components found for the current stage.")
+
+        def get_location_by_name(location_name):
+            location = self.env['stock.location'].search([('name', '=', location_name)], limit=1)
+            if not location:
+                raise UserError(f"Location '{location_name}' not found!")
+            return location
+
+        source_location_stock = get_location_by_name('Stock')
+        location_production = get_location_by_name('Stock')
+
+        for component in components:
+            self._create_stock_move(
+                product_id=component.product_id,
+                quantity=component.product_qty,
+                location_id=source_location_stock.id,
+                location_dest_id=location_production.id,
+            )
+
+        for product in products:
+            self._create_stock_move(
+                product_id=product.product_id,
+                quantity=product.product_qty,
+                location_id=location_production.id,
+                location_dest_id=source_location_stock.id,
+            )
+
+        for byproduct in byproducts:
+            self._create_stock_move(
+                product_id=byproduct.product_id,
+                quantity=byproduct.product_qty,
+                location_id=location_production.id,
+                location_dest_id=source_location_stock.id,
+            )
+
+        stage_order = ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5', 'stage_6']
+        current_index = stage_order.index(self.stage_status)
+
+        if current_index < len(stage_order) - 1:
+            self.stage_status = stage_order[current_index + 1]
+
+        self._compute_stage_readonly()
+
+        self.env.cr.commit()
+
+        _logger.info(f"Stage {self.stage_status} confirmed. Stock updated for products, components, and by-products.")
+
+    def _create_stock_move(self, product_id, quantity, location_id, location_dest_id):
+        stock_move = self.env['stock.move'].create({
+            'product_id': product_id.id,
+            'product_uom_qty': quantity,
+            'product_uom': product_id.uom_id.id,
+            'location_id': location_id,
+            'location_dest_id': location_dest_id,
+            'name': product_id.name,
+            'state': 'draft',
         })
 
-        # Add components to BoM lines
-        for component in components:
-            self.env['mrp.bom.line'].create({
-                'bom_id': bom.id,
-                'product_id': component.name.id,
-                'product_qty': component.qty,
-            })
+        stock_move._action_confirm()
+        stock_move._action_assign()
+        for move_line in stock_move.move_line_ids:
+            move_line.qty_done = move_line.product_uom_qty
+        stock_move._action_done()
 
-        # Add by-products to BoM byproducts
-        for byproduct in byproducts:
-            self.env['mrp.bom.byproduct'].create({
-                'bom_id': bom.id,
-                'product_id': byproduct.name.id,
-                'product_qty': byproduct.qty,
-            })
-
-        # Log working hours and labour names
-        self.stage_one_ids = [(0, 0, {
-            'start_time': fields.Datetime.now(),
-            'end_time': fields.Datetime.now(),
-            'employee_ids': [(6, 0, self.labour_ids.ids)],
-            'machine_name': 'Custom Machine',
-            'working_hours': self.working_hours,
-        })]
-
-        _logger.info(f"BoM created for product: {self.product_id.name} in stage: {self.stage_status}")
-
-    def _get_product_id(self, vals):
-        """Determine the product_id based on the current stage."""
-        if self.stage_status == 'stage_1' and 'product_one_id' in vals:
-            produced_ids = vals.get('produced_ids', [])
-            if produced_ids:
-                return produced_ids[0][2].get('name')  # Fetch product_id from produced_ids
-        elif self.stage_status == 'stage_2' and 'product_two_id' in vals:
-            produced_two_ids = vals.get('produced_two_ids', [])
-            if produced_two_ids:
-                return produced_two_ids[0][2].get('name')  # Fetch product_id from produced_two_ids
-        elif self.stage_status == 'stage_3' and 'product_three_id' in vals:
-            produced_three_ids = vals.get('product_three_id', [])
-            if produced_three_ids:
-                return produced_three_ids[0][2].get('name')  # Fetch product_id from produced_three_ids
-        # Repeat for other stages (stage_4, stage_5, stage_6)...
-
-        # If no product_id is found, return None
-        return None
-
-    @api.model
-    def create(self, vals):
-        """Override create method to ensure product_id is set."""
-        _logger.info(f"Creating record with values: {vals}")
-
-        # Fetch product_id based on the current stage
-        product_id = self._get_product_id(vals)
-        if not product_id:
-            raise ValidationError("Product is required to create a production stage.")
-
-        # Ensure product_id is set in vals
-        vals['product_id'] = product_id
-
-        return super(StageMain, self).create(vals)
-
-    def write(self, vals):
-        """Override write method to ensure product_id is set."""
-        _logger.info(f"Updating record with values: {vals}")
-
-        # Fetch product_id based on the current stage
-        product_id = self._get_product_id(vals)
-        if 'product_id' in vals and not vals['product_id']:
-            if not product_id:
-                raise ValidationError("Product is required to update a production stage.")
-            vals['product_id'] = product_id
-
-        return super(StageMain, self).write(vals)
+        _logger.info(f"Stock move created: {stock_move.name} for product {product_id.name} with quantity {quantity}")

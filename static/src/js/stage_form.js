@@ -4,80 +4,71 @@ odoo.define('stage_form_custom_js', function (require) {
     var FormController = require('web.FormController');
 
     FormController.include({
-        start: function() {
-            this._super.apply(this, arguments);  // Call the parent start method
-            this._bindTabClick();  // Attach event handler once
-        },
+        renderButtons: function ($node) {
+            this._super.apply(this, arguments);
 
-        _bindTabClick: function() {
             var self = this;
-            // Attach the event listener to the tab click only once
-            this.$el.off('click', '.o_notebook_headers .nav-item a'); // Ensure no duplicate bindings
-            this.$el.on('click', '.o_notebook_headers .nav-item a', function () {
-                // Get the index of the clicked tab
-                var tabIndex = $(this).parent().index();
-                console.log("Notebook tab index clicked:", tabIndex); // Debug: Log the tab index
+            var reloadInProgress = false;
 
-                // Map the tab index to the corresponding stage status
+            this.$el.off('click', '.o_notebook_headers .nav-item a');
+            this.$el.on('click', '.o_notebook_headers .nav-item a', function () {
+                var tabIndex = $(this).parent().index();
                 var stageStatus = '';
                 if (tabIndex === 0) {
-                    stageStatus = 'stage_1'; // First tab corresponds to Stage 1
+                    stageStatus = 'stage_1';
                 } else if (tabIndex === 1) {
-                    stageStatus = 'stage_2'; // Second tab corresponds to Stage 2
+                    stageStatus = 'stage_2';
+                } else if (tabIndex === 2) {
+                    stageStatus = 'stage_3';
+                } else if (tabIndex === 3) {
+                    stageStatus = 'stage_4';
+                } else if (tabIndex === 4) {
+                    stageStatus = 'stage_5';
+                } else if (tabIndex === 5) {
+                    stageStatus = 'stage_6';
                 }
-                console.log("Stage status to be updated:", stageStatus); // Debug: Log the stage status
 
-                // Get the record ID
-                var recordId = self.renderer.state.res_id; // Use res_id to get the record ID
-                console.log("Record ID from res_id:", recordId); // Debug: Log the record ID
-
-                // If res_id is undefined, try extracting the ID from the URL
+                var recordId = self.renderer.state.res_id;
                 if (!recordId) {
-                    console.log("Window location hash:", window.location.hash); // Debug: Log the URL hash
                     var idParam = new URLSearchParams(window.location.hash.substring(1)).get('id');
                     if (idParam) {
                         recordId = parseInt(idParam, 10);
                     }
-                    console.log("Record ID from URL:", recordId); // Debug: Log the record ID
                 }
 
-                // Update the stage_status field in the database
+                if (!recordId) {
+                    console.log("Skipping update: No record ID (creation mode)");
+                    return; // Exit the function if no record ID
+                }
+
                 if (stageStatus && recordId) {
-                    self._rpc({
-                        model: 'stage.main',
-                        method: 'write',
-                        args: [recordId, { stage_status: stageStatus }],
-                    }).then(function () {
-                        console.log("Stage status updated successfully"); // Debug: Log success
+                    var currentStageStatus = self.renderer.state.data.stage_status; // Get the current stage status
+                    console.log("Current Stage Status: ", currentStageStatus);
+                    console.log("New Stage Status: ", stageStatus);
 
-                        // Update the form state directly (force UI update)
-                        self._updateStatusbar(stageStatus);
-
-                    }).catch(function (error) {
-                        console.error("Error updating stage status:", error); // Debug: Log errors
-                    });
-                } else if (!recordId) {
-                    console.log("Skipping update: No record ID (creation mode)"); // Debug: Log creation mode
+                    if (currentStageStatus !== stageStatus) { // only write if stage status has changed.
+                        self._rpc({
+                            model: 'stage.main',
+                            method: 'write',
+                            args: [recordId, { stage_status: stageStatus }],
+                        }).then(function () {
+                            console.log("Stage status updated successfully");
+                            if (!reloadInProgress) {
+                                reloadInProgress = true;
+                                self.reload().then(function() {
+                                    reloadInProgress = false;
+                                });
+                            }
+                        }).catch(function (error) {
+                            console.error("Error updating stage status:", error);
+                        });
+                    } else {
+                        console.log("Stage Status unchanged, skipping write and reload.");
+                    }
                 } else {
-                    console.error("Record ID or stage status is invalid"); // Debug: Log invalid state
+                    console.error("Stage status is empty or invalid record ID");
                 }
             });
-        },
-
-        // New method to update the statusbar widget
-        _updateStatusbar: function(stageStatus) {
-            // Triggering a refresh of the statusbar widget without reloading the page
-            var statusBar = this.$el.find('[name="stage_status"]'); // The statusbar field
-            if (statusBar.length) {
-                statusBar.val(stageStatus); // Set the new status
-                statusBar.trigger('change'); // Trigger change event to update the UI
-            }
-        },
-
-        destroy: function () {
-            // Clean up event listener when the form is destroyed
-            this.$el.off('click', '.o_notebook_headers .nav-item a');
-            this._super.apply(this, arguments);  // Call parent destroy method
         }
     });
 });
