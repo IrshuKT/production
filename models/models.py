@@ -5,7 +5,8 @@ import xml.etree.ElementTree as ET
 import io
 import base64
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+from openpyxl.worksheet.page import PageMargins
+from openpyxl.styles import Font, Alignment,Border,Side
 from lxml import etree
 
 _logger = logging.getLogger(__name__)
@@ -56,7 +57,6 @@ class StageMain(models.Model):
     stage_6_readonly = fields.Boolean(string='Stage 6 Readonly', default=False)
 
     #Pdf print action
-
     def action_print_report(self):
         return self.env.ref('stage.stage_report_action').report_action(self)
 
@@ -113,7 +113,152 @@ class StageMain(models.Model):
 
         return stage_data
 
-    
+    def generate_excel_report(self):
+        """Generate an Excel report for the current record."""
+        self.ensure_one()
+
+        # Create a new workbook and add a worksheet
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "Production Stage Report"
+
+        # Set column widths
+        worksheet.column_dimensions['C'].width = 40
+        worksheet.column_dimensions['D'].width = 15
+        worksheet.column_dimensions['E'].width = 15
+        worksheet.column_dimensions['F'].width = 15
+
+
+        # Set page margins (in inches)
+        worksheet.page_margins = PageMargins(
+            left=0.7,  # Left margin
+            right=0.7,  # Right margin
+            top=0.75,  # Top margin
+            bottom=0.75,  # Bottom margin
+            header=0.3,  # Header margin
+            footer=0.3,  # Footer margin
+        )
+
+        # Define border style
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin'),
+        )
+
+        # Fetch stage data
+        stage_data = self.get_stage_data()
+
+        # Start row counter
+        row = 7
+
+        # Loop through each stage
+        for stage in stage_data:
+            stage_name = stage['stage_name']
+
+
+
+            # Add stage heading
+            worksheet.cell(row=row, column=3, value=stage_name).font = Font(bold=True, size=12)
+            worksheet.merge_cells(start_row=row, start_column=3, end_row=row, end_column=7)
+            row += 1
+
+            # Add Produced table
+            row += 1
+            worksheet.cell(row=row, column=3, value="PRODUCED").font = Font(bold=True)
+            worksheet.cell(row=row, column=4, value="Lot").font = Font(bold=True)
+            worksheet.cell(row=row, column=5, value="Qty").font = Font(bold=True)
+            worksheet.cell(row=row, column=6, value="Type").font = Font(bold=True)
+            row += 1
+
+            # Add borders to Produced table headers
+            for col in range(3, 7):
+                worksheet.cell(row=row - 1, column=col).border = thin_border
+
+            for product in stage['products']:
+                worksheet.cell(row=row, column=3, value=product.product_id.name or '')
+                worksheet.cell(row=row, column=4, value=product.product_lot or '')
+                worksheet.cell(row=row, column=5, value=product.product_qty or '')
+                worksheet.cell(row=row, column=6, value=product.product_type or '')
+                # Add borders to Produced table values
+                for col in range(3, 7):
+                    worksheet.cell(row=row, column=col).border = thin_border
+                row += 1
+
+            # Add Components table
+            worksheet.cell(row=row, column=3, value="COMPONENTS").font = Font(bold=True)
+            worksheet.cell(row=row, column=4, value="Lot").font = Font(bold=True)
+            worksheet.cell(row=row, column=5, value="Qty").font = Font(bold=True)
+            worksheet.cell(row=row, column=6, value="Type").font = Font(bold=True)
+            row += 1
+
+            # Add borders to Components table headers
+            for col in range(3, 7):
+                worksheet.cell(row=row - 1, column=col).border = thin_border
+
+            for component in stage['components']:
+                worksheet.cell(row=row, column=3, value=component.product_id.name or '')
+                worksheet.cell(row=row, column=4, value=component.product_lot or '')
+                worksheet.cell(row=row, column=5, value=component.product_qty or '')
+                worksheet.cell(row=row, column=6, value=component.product_type or '')
+
+                # Add borders to Components table values
+                for col in range(3, 7):
+                    worksheet.cell(row=row, column=col).border = thin_border
+                row += 1
+
+            # Add By-Products table
+            worksheet.cell(row=row, column=3, value="BY-PRODUCTS").font = Font(bold=True)
+            worksheet.cell(row=row, column=4, value="Lot").font = Font(bold=True)
+            worksheet.cell(row=row, column=5, value="Qty").font = Font(bold=True)
+            worksheet.cell(row=row, column=6, value="Type").font = Font(bold=True)
+            row += 1
+
+            # Add borders to By-Products table headers
+            for col in range(3, 7):
+                worksheet.cell(row=row - 1, column=col).border = thin_border
+
+            for byproduct in stage['byproducts']:
+                worksheet.cell(row=row, column=3, value=byproduct.product_id.name or '')
+                worksheet.cell(row=row, column=4, value=byproduct.product_lot or '')
+                worksheet.cell(row=row, column=5, value=byproduct.product_qty or '')
+                worksheet.cell(row=row, column=6, value=byproduct.product_type or '')
+
+                # Add borders to By-Products table values
+                for col in range(3, 7):
+                    worksheet.cell(row=row, column=col).border = thin_border
+                row += 1
+
+            # Add a blank row between stages
+            row += 1
+
+        # Save the workbook to a BytesIO stream
+        output = io.BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        # Encode the file to base64
+        excel_file = base64.b64encode(output.read())
+        output.close()
+
+        # Create an attachment
+        attachment = self.env['ir.attachment'].create({
+            'name': f"Production_Stage_Report_{self.voucher_no}.xlsx",
+            'type': 'binary',
+            'datas': excel_file,
+            'res_model': 'stage.main',
+            'res_id': self.id,
+            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+
+        # Return the download URL
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f"/web/content/{attachment.id}?download=true",
+            'target': 'self',
+        }
+
 
     # Mark previous stages as read-only once moved forward.
     @api.depends('stage_status')
@@ -126,6 +271,7 @@ class StageMain(models.Model):
             record.stage_4_readonly = record.stage_status not in ['stage_1', 'stage_2', 'stage_3', 'stage_4']
             record.stage_5_readonly = record.stage_status not in ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5']
             record.stage_6_readonly = record.stage_status == 'stage_6'
+
 
     @api.onchange('product_one_id')
     def _onchange_product_stage_1(self):
